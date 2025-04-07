@@ -1,3 +1,4 @@
+import json
 from contextlib import asynccontextmanager
 
 import cv2
@@ -53,8 +54,8 @@ class PipelineConfig(BaseModel):
 VIDEO_HOOKER = VideoHooker()
 PIPELINE_CONFIG = None
 
-SERVER_INFO = ['main:app', '0.0.0.0', 12921]
-ALLOWED_CORS = []
+with open("settings.json", 'r') as f:
+    SETTINGS = json.load(f)
 
 
 def get_videowriter(cfg):
@@ -62,14 +63,14 @@ def get_videowriter(cfg):
     height = cfg.height
     fps = cfg.fps
     bitrate = cfg.bitrate
-    preset = cfg.preset
-    keyint = cfg.keyint
+    speed_preset = cfg.speed_preset
+    key_int_max = cfg.key_int_max
     profile = cfg.profile
     location = cfg.location
     pipeline= (
         "appsrc ! videoconvert ! "
         f"video/x-raw,format=I420,width={width},height={height},framerate={fps}/1 ! "
-        f"x264enc speed-preset={preset} bitrate={bitrate} key-int-max={keyint} ! "
+        f"x264enc speed-preset={speed_preset} bitrate={bitrate} key-int-max={key_int_max} ! "
         f"video/x-h264,profile={profile} ! "
         f"rtspclientsink location={location}"
     )
@@ -91,7 +92,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_CORS,
+    allow_origins=SETTINGS["allowed_cors"],
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],)
@@ -120,8 +121,9 @@ async def stop_hooking():
 
 if __name__ == '__main__':
     import uvicorn
+
     uvicorn.run(
-        SERVER_INFO[0],
-        host=SERVER_INFO[1],
-        port=SERVER_INFO[2]
+        app=SETTINGS["app"],
+        host=SETTINGS["host"],
+        port=SETTINGS["port"]
     )
