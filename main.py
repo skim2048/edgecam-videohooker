@@ -1,4 +1,3 @@
-# import asyncio
 from contextlib import asynccontextmanager
 
 import cv2
@@ -40,6 +39,7 @@ class VideoHooker:
 
 
 class PipelineConfig(BaseModel):
+    source: str
     width: int
     height: int
     fps: int
@@ -53,19 +53,19 @@ class PipelineConfig(BaseModel):
 VIDEO_HOOKER = VideoHooker()
 PIPELINE_CONFIG = None
 
-SERVER_INFO = ['main:app', '0.0.0.0', 12999]
+SERVER_INFO = ['main:app', '0.0.0.0', 12921]
 ALLOWED_CORS = []
 
 
-def get_videowriter():
-    width = 1280
-    height = 720
-    fps = 25
-    bitrate = 2000
-    preset = "veryfast"
-    keyint = 60
-    profile = "baseline"
-    location = "rtsp://localhost:8554/mystream"
+def get_videowriter(cfg):
+    width = cfg.width
+    height = cfg.height
+    fps = cfg.fps
+    bitrate = cfg.bitrate
+    preset = cfg.preset
+    keyint = cfg.keyint
+    profile = cfg.profile
+    location = cfg.location
     pipeline= (
         "appsrc ! videoconvert ! "
         f"video/x-raw,format=I420,width={width},height={height},framerate={fps}/1 ! "
@@ -98,11 +98,11 @@ app.add_middleware(
 
 
 @app.post('/hook/start')
-async def start_hooking():
+async def start_hooking(cfg: PipelineConfig):
+    print(cfg)
     try:
-        rtsp = "rtsp://***@192.168.1.103:554/stream1"
-        writer = get_videowriter()
-        VIDEO_HOOKER.hook(rtsp, writer)
+        writer = get_videowriter(cfg)
+        VIDEO_HOOKER.hook(cfg.source, writer)
         return {"status": "hooking started."}
     except Exception as e:
         VIDEO_HOOKER.stop()
@@ -116,13 +116,6 @@ async def stop_hooking():
         return {"status": "hooking stopped."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/hook/config")
-async def config_hooking(cfg: PipelineConfig):
-    global PIPELINE_CONFIG
-    PIPELINE_CONFIG = cfg
-    return {"status": "hooking config updated."}
 
 
 if __name__ == '__main__':
